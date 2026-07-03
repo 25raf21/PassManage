@@ -1,0 +1,123 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassManage - Control Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
+    
+    <!-- Navigation Header Matrix -->
+    <nav class="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center shadow-md">
+        <span class="text-xl font-bold text-indigo-400 flex items-center gap-2">
+            <span>Lock</span> PassManage Control Dashboard
+        </span>
+        <div class="flex items-center space-x-4">
+            <span class="text-xs bg-gray-900 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700">
+                Verified Identity: <b class="text-indigo-300 ml-1">{{ current_user.username }}</b>
+            </span>
+            <a href="{{ url_for('logout') }}" class="text-xs bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white font-bold transition shadow">
+                Lock Vault Session
+            </a>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 h-fit shadow-lg">
+            <h2 class="text-lg font-bold mb-1 text-indigo-300">Archive Credential</h2>
+            <p class="text-xs text-gray-400 mb-4">Input data will undergo local symmetric authenticated encryption prior to archival persistence.</p>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="bg-green-950/60 border border-green-700 text-green-300 px-3 py-2 rounded mb-4 text-xs text-center font-medium">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('dashboard') }}" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="action" value="add">
+                
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-gray-400 mb-1 font-semibold">Service / Platform Name</label>
+                    <input type="text" name="service" placeholder="e.g., ProtonMail, GitHub" required 
+                           class="w-full bg-gray-700 p-2 rounded border border-gray-600 text-sm focus:outline-none focus:border-indigo-500 text-white font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-gray-400 mb-1 font-semibold">Identity / Username / Email</label>
+                    <input type="text" name="username" placeholder="user@example.com" required 
+                           class="w-full bg-gray-700 p-2 rounded border border-gray-600 text-sm focus:outline-none focus:border-indigo-500 text-white font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-gray-400 mb-1 font-semibold">Secret Entry Password</label>
+                    <input type="text" name="password" value="{{ suggested_password }}" required 
+                           class="w-full bg-gray-700 p-2 rounded border border-gray-600 text-sm font-mono text-green-400 focus:outline-none focus:border-indigo-500 font-semibold">
+                </div>
+                
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-2.5 rounded transition text-sm shadow">
+                    Encrypt & Save Record
+                </button>
+            </form>
+            
+            <div class="mt-5 pt-4 border-t border-gray-700">
+                <p class="text-xs text-gray-400 font-medium">Cryptographically Strong Auto-Suggested Key Variant:</p>
+                <div class="mt-1 bg-gray-900 p-2 rounded border border-gray-750 flex items-center justify-between">
+                    <code class="text-xs text-yellow-400 font-mono select-all font-bold tracking-wider">{{ suggested_password }}</code>
+                    
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 lg:col-span-2 shadow-lg">
+            <h2 class="text-lg font-bold mb-1 text-indigo-300">Decrypted Active Assets</h2>
+            <p class="text-xs text-gray-400 mb-4">Values below are systematically decrypted using your temporary session key during route handling.</p>
+            
+            {% if not vault %}
+                <div class="text-center py-12 border-2 border-dashed border-gray-700 rounded-lg">
+                    <p class="text-gray-500 text-sm">No structured records found linked to this encryption key configuration scope.</p>
+                </div>
+            {% else %}
+                <div class="overflow-x-auto rounded-lg border border-gray-700 shadow-inner">
+                    <table class="w-full text-left text-sm text-gray-300">
+                        <thead class="bg-gray-900 text-xs text-gray-400 uppercase tracking-wider">
+                            <tr>
+                                <th class="p-3.5 border-b border-gray-700">Platform Scope</th>
+                                <th class="p-3.5 border-b border-gray-700">User Identity</th>
+                                <th class="p-3.5 border-b border-gray-700">Password Plaintext</th>
+                                <th class="p-3.5 border-b border-gray-700 text-right">Operations</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            {% for item in vault %}
+                            <tr class="hover:bg-gray-750/30 transition duration-150">
+                                <td class="p-3.5 font-bold text-white tracking-wide">{{ item.service_name }}</td>
+                                <td class="p-3.5 text-gray-300 font-medium">{{ item.username_email }}</td>
+                                <td class="p-3.5">
+                                    <span class="font-mono text-green-400 bg-gray-900/80 px-2 py-1 rounded text-xs select-all border border-gray-750 font-semibold">
+                                        {{ item.password }}
+                                    </span>
+                                </td>
+                                <td class="p-3.5 text-right">
+                                    <form method="POST" action="{{ url_for('dashboard') }}" onsubmit="return confirm('Purge this record from persistent database schema?');" class="inline">
+                                        <!-- CSRF Prevention Token -->
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                                        <button type="submit" class="text-red-400 hover:text-red-500 text-xs font-bold transition hover:underline">
+                                            Purge
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
